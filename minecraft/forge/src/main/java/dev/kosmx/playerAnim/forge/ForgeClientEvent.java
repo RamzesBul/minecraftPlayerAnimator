@@ -1,9 +1,12 @@
 package dev.kosmx.playerAnim.forge;
 
+import dev.kosmx.playerAnim.impl.Helper;
+import dev.kosmx.playerAnim.impl.compat.skinLayers.SkinLayersTransformer;
 import dev.kosmx.playerAnim.minecraftApi.PlayerAnimationRegistry;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
@@ -21,7 +24,13 @@ public class ForgeClientEvent {
     }
 
     public void clientSetup(FMLClientSetupEvent event) {
-
+        if (Helper.isBendEnabled() && ModList.get().isLoaded("skinlayers3d")) {
+            try {
+                SkinLayersTransformer.init(ForgeClientEvent.LOGGER);
+            } catch(Error e) {
+                ForgeClientEvent.LOGGER.error("Failed to initialize 3D skin layers compat: " + e.getMessage());
+            }
+        }
     }
 
     public void resourceLoadingListener(@NotNull AddClientReloadListenersEvent event) {

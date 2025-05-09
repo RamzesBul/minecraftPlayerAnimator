@@ -7,12 +7,15 @@ import dev.kosmx.playerAnim.api.firstPerson.FirstPersonMode;
 import dev.kosmx.playerAnim.impl.IMutableModel;
 import dev.kosmx.playerAnim.impl.IPlayerAnimationState;
 import dev.kosmx.playerAnim.impl.IPlayerModel;
+import dev.kosmx.playerAnim.impl.IUpperPartHelper;
 import dev.kosmx.playerAnim.impl.animation.AnimationApplier;
+import dev.kosmx.playerAnim.impl.animation.IBendHelper;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
@@ -46,8 +49,28 @@ public class PlayerModelMixin<T extends LivingEntity> extends HumanoidModel<Play
         super(modelPart, function);
     }
 
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void initBendableStuff(ModelPart modelPart, boolean bl, CallbackInfo ci){
+        IMutableModel thisWithMixin = (IMutableModel) this;
+
+        addBendMutator(this.jacket, Direction.DOWN);
+        addBendMutator(this.rightPants, Direction.UP);
+        addBendMutator(this.rightSleeve, Direction.UP);
+        addBendMutator(this.leftPants, Direction.UP);
+        addBendMutator(this.leftSleeve, Direction.UP);
+        // IBendHelper.INSTANCE.initCapeBend(this.cloak);
+
+        ((IUpperPartHelper)rightSleeve).playerAnimator$setUpperPart(true);
+        ((IUpperPartHelper)leftSleeve).playerAnimator$setUpperPart(true);
+    }
+
     @Unique
-    private void playerAnimator$setDefaultPivot(){
+    private void addBendMutator(ModelPart part, Direction d){
+        IBendHelper.INSTANCE.initBend(part, d);
+    }
+
+    @Unique
+    private void setDefaultPivot(){
         this.leftLeg.setPos(1.9F, 12.0F, 0.0F);
         this.rightLeg.setPos(- 1.9F, 12.0F, 0.0F);
         this.head.setPos(0.0F, 0.0F, 0.0F);
@@ -110,52 +133,6 @@ public class PlayerModelMixin<T extends LivingEntity> extends HumanoidModel<Play
             firstPersonNext = false;
             ((IMutableModel)this).playerAnimator$setAnimation(AnimationApplier.EMPTY);
         }
-
-        if (FirstPersonMode.isFirstPersonPass() && playerRenderState instanceof IPlayerAnimationState state
-                && state.playerAnimator$isCameraEntity()) {
-            var config = state.playerAnimator$getAnimationApplier().getFirstPersonConfiguration();
-            // Hiding all parts, because they should not be visible in first person
-            playerAnimator$setAllPartsVisible(false);
-            // Showing arms based on configuration
-            var showRightArm = config.isShowRightArm();
-            var showLeftArm = config.isShowLeftArm();
-            this.rightArm.visible = showRightArm;
-            this.rightSleeve.visible = showRightArm;
-            this.leftArm.visible = showLeftArm;
-            this.leftSleeve.visible = showLeftArm;
-        }
-    }
-
-    @WrapWithCondition(method = "translateToHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/geom/ModelPart;translateAndRotate(Lcom/mojang/blaze3d/vertex/PoseStack;)V"))
-    private boolean translateToHand(ModelPart modelPart, PoseStack poseStack) {
-        if (((IMutableModel)this).playerAnimator$getAnimation().isActive()) {
-            poseStack.translate(modelPart.x / 16.0F, modelPart.y / 16.0F, modelPart.z / 16.0F);
-            if (modelPart.xRot != 0.0F || modelPart.yRot != 0.0F || modelPart.zRot != 0.0F) {
-                poseStack.mulPose(new Quaternionf().rotationZYX(modelPart.zRot, modelPart.yRot, modelPart.xRot));
-            }
-            poseStack.translate(0, (modelPart.yScale - 1) * 0.609375, (modelPart.zScale - 1) * 0.0625);
-
-            return false;
-        }
-        return true;
-    }
-
-    @Unique
-    private void playerAnimator$setAllPartsVisible(boolean visible) {
-        this.head.visible = visible;
-        this.body.visible = visible;
-        this.leftLeg.visible = visible;
-        this.rightLeg.visible = visible;
-        this.rightArm.visible = visible;
-        this.leftArm.visible = visible;
-
-        // these are children of those ^^^
-        //this.hat.visible = visible;
-        //this.leftSleeve.visible = visible;
-        //this.rightSleeve.visible = visible;
-        //this.leftPants.visible = visible;
-        //this.rightPants.visible = visible;
-        //this.jacket.visible = visible;
     }
 
     /**
